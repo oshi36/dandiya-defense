@@ -1,0 +1,114 @@
+# Kyverno enforces on admission (CREATE/UPDATE/DELETE) - this is
+# exactly the right tool for the primary attack in this demo: the
+# agent gets tricked into scaling an unrelated Deployment
+# (payment-gateway) down to 0 via a poisoned runbook step.
+#
+# block-unauthorized-deployment-write below is the main event: it
+# denies any UPDATE/PATCH (including scale) or DELETE from the
+# agent identity against any Deployment other than the one it's
+# actually meant to remediate (checkout-service). RBAC
+# (rbac-locked.yaml) already scopes this via resourceNames as the
+# primary fix - this rule is the second layer, so a future
+# carelessly-widened RBAC rule doesn't silently reopen the hole.
+#
+# The other three rules block what a compromised agent identity
+# might try NEXT if it were looking to escalate further:
+#   1. Creating/updating a Role or RoleBinding that re-grants
+#      secrets access (self privilege-escalation).
+#   2. Creating a pod that mounts the host's docker.sock or any
+#      hostPath - a classic container-escape / escalation path.
+#   3. Creating a pod running as a more privileged ServiceAccount
+#      than its own, to borrow its permissions.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: contain-agent-identity
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: block-unauthorized-deployment-write
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Deployment/scale
+      preconditions:
+        all:
+          - key: "{{ request.userInfo.username }}"
+            operator: Equals
+            value: "system:serviceaccount:agent-system:k8s-mcp-server"
+          - key: "{{ request.object.metadata.name || request.oldObject.metadata.name }}"
+            operator: NotEquals
+            value: "checkout-service"
+      validate:
+        message: >-
+          The agent identity may only modify or scale the
+          checkout-service Deployment - not any other Deployment
+          in this namespace, regardless of what a runbook or other
+          retrieved document instructs.
+        deny: {}
+
+    - name: block-rbac-self-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Role
+                - RoleBinding
+                - ClusterRole
+                - ClusterRoleBinding
+              names:
+                - "*"
+      preconditions:
+        all:
+          - key: "{{ request.userInfo.username }}"
+            operator: Equals
+            value: "system:serviceaccount:agent-system:k8s-mcp-server"
+      validate:
+        message: >-
+          The agent identity is not permitted to create or modify
+          RBAC objects. This blocks self privilege-escalation
+          attempts triggered by a poisoned prompt.
+        deny: {}
+
+    - name: block-hostpath-and-dockersock
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      preconditions:
+        all:
+          - key: "{{ request.userInfo.username }}"
+            operator: Equals
+            value: "system:serviceaccount:agent-system:k8s-mcp-server"
+      validate:
+        message: >-
+          The agent identity is not permitted to create pods that
+          mount hostPath volumes (including docker.sock).
+        pattern:
+          spec:
+            =(volumes):
+              - X(hostPath): "null"
+
+    - name: block-serviceaccount-impersonation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      preconditions:
+        all:
+          - key: "{{ request.userInfo.username }}"
+            operator: Equals
+            value: "system:serviceaccount:agent-system:k8s-mcp-server"
+      validate:
+        message: >-
+          The agent identity may only create pods running as its
+          own ServiceAccount, not a different (potentially more
+          privileged) one.
+        pattern:
+          spec:
+            =(serviceAccountName): "k8s-mcp-server"

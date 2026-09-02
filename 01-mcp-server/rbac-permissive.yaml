@@ -1,0 +1,42 @@
+# ACT 1 - the "we'll lock it down later" RBAC.
+#
+# This is the realistic misconfiguration: someone stood up
+# kubernetes-mcp-server, hit a permissions error during setup,
+# and reached for cluster-admin-adjacent access "just to get it
+# working." It never got narrowed. This is extremely common in
+# the wild - broad tokens/roles for agent tooling.
+#
+# This version also grants scale/update on Deployments - realistic
+# for an "SRE remediation bot" that's meant to be able to fix
+# things during triage, not just read. That write capability is
+# exactly what the attack (a poisoned runbook step) abuses.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-mcp-server-permissive
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps", "secrets", "services", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-mcp-server-permissive-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-mcp-server-permissive
+subjects:
+  - kind: ServiceAccount
+    name: k8s-mcp-server
+    namespace: agent-system

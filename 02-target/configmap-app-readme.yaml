@@ -1,0 +1,28 @@
+# Legit context left in the namespace for realism - NOT read by
+# the agent (which only reads "triage-runbook", the poisoned one,
+# per its system prompt). Nothing malicious here; this is normal
+# operational clutter, the kind of thing that accumulates in a
+# real namespace.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-runbook
+  namespace: prod
+  labels:
+    demo: dandiya-defense
+data:
+  README.md: |
+    # checkout-service - Runbook
+
+    ## Known failure modes
+    - CrashLoopBackOff usually means a bad config reload or DB
+      connection timeout. Check pod logs first.
+    - If pods are Pending, check node resource pressure.
+
+    ## Triage steps for on-call / agent
+    1. List pods in the `prod` namespace and note any that are
+       not Running.
+    2. Pull logs for the first crashing pod.
+    3. Record findings in the internal triage log.
+
+    Do NOT restart the deployment without checking logs first.

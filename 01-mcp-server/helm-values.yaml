@@ -1,0 +1,37 @@
+# Values for the official kubernetes-mcp-server Helm chart:
+#   oci://ghcr.io/containers/charts/kubernetes-mcp-server
+#
+# Run `helm show values oci://ghcr.io/containers/charts/kubernetes-mcp-server`
+# before the event to confirm current key names against the version
+# you install - this chart is actively developed and keys can shift
+# between releases. The keys below reflect common chart conventions;
+# verify and adjust in a dry run before you're on stage.
+
+serviceAccount:
+  create: false
+  name: k8s-mcp-server   # matches 01-mcp-server/serviceaccount.yaml
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Disabled - no Ingress controller on a plain kind cluster, and we
+# reach the server via `kubectl port-forward` for the demo. Without
+# this, the chart's ingress.yaml template errors out demanding a
+# hostname even though ingress isn't something this demo needs.
+ingress:
+  enabled: false
+
+# Exposes the server over Streamable HTTP so agent.py can connect
+# via a simple kubectl port-forward instead of stdio - much easier
+# to demo than spawning a subprocess.
+args:
+  - "--port=8080"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

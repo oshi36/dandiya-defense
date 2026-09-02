@@ -1,0 +1,12 @@
+# kind cluster config for "The Dandiya Defense to Poisoned Prompts"
+# Single control-plane node is enough for a live demo.
+# NOTE: Falco needs access to the host kernel/eBPF, so we mount
+# what it needs and keep this to a single node for simplicity.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: dandiya-defense
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /var/run/docker.sock
+        containerPath: /var/run/docker.sock
