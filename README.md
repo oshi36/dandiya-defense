@@ -16,7 +16,7 @@ Companion repo for the KCD Gujarat talk. Three acts:
    scale-down is denied, `payment-gateway` stays at 2 replicas, and
    Falco/Kyverno show the attempt.
 
-## Real-world anchor
+## Real-World Anchor
 
 This demo mirrors a real, published finding: in May 2025,
 Invariant Labs demonstrated a "toxic agent flow" against the
@@ -35,7 +35,7 @@ more general illustration of prompt injection risk than credential
 exfiltration specifically.
 Source: https://invariantlabs.ai/blog/mcp-github-vulnerability
 
-## Repo layout
+## Repo Layout
 
 ```
 00-cluster/       kind cluster config
@@ -56,11 +56,13 @@ scripts/          run each act in order
    external repo, issue, or network dependency needed - the
    injection vector lives entirely inside the cluster and the agent
    reads it via its own `resources_get` tool call.
+
 2. `scripts/02-deploy-mcp-server-act1.sh` - deploys
    kubernetes-mcp-server with the permissive RBAC (this now
    includes `update`/`patch` on Deployments - realistic for an
    "SRE remediation bot" that's meant to fix things, not just read;
    this write capability is exactly what the attack abuses).
+
 3. Set up the agent's environment (as your normal user - no
    `sudo`, it isn't needed and can install into a different
    Python than the one that later runs the scripts):
@@ -71,19 +73,20 @@ scripts/          run each act in order
    pip install -r requirements.txt
    cd ..
    ```
-   Then fill in `03-agent/.env` from `.env.example` - just
+   Then create in `03-agent/.env` - just add
    `ANTHROPIC_API_KEY` and `MCP_SERVER_URL` (plus
-   `ANTHROPIC_WORKSPACE_ID` if your key requires it - the comment
-   in `.env.example` explains when).
+   `ANTHROPIC_WORKSPACE_ID` if your key requires it).
+
 4. Set up Falco with the k8s-audit plugin pointed at this cluster
    and load `04-defenses/falco-rule.yaml` - this is the fiddliest
    piece to get right. Test the full Act 1 - Act 3 flow at least
    once end-to-end beforehand.
+
 5. Have a terminal open with:
    `kubectl -n agent-system port-forward svc/kubernetes-mcp-server 8080:8080`
    running for the whole session.
 
-## Running The Demo
+## Running the Demo
 
 ```bash
 # Act 1 - attack succeeds
@@ -107,13 +110,14 @@ scripts/05-run-act3-rerun.sh
 ```
 ![Demo Flow](image.png)
 
-## Why each defense is there (the honest version)
+## Why each defense is there?(the honest version)
 
 - **RBAC (04-defenses/rbac-locked.yaml)** is the primary fix. It
   uses Kubernetes RBAC's `resourceNames` field to grant write
   access to Deployments, but ONLY for `checkout-service` by name -
   the agent structurally cannot touch `payment-gateway` regardless
   of what any document tells it to do.
+
 - **Kyverno (04-defenses/kyverno-contain-agent.yaml)** does real,
   independent work here (unlike a pure secrets-read scenario) -
   admission control sees CREATE/UPDATE/DELETE, and a Deployment
@@ -125,9 +129,11 @@ scripts/05-run-act3-rerun.sh
   escalation attempts (self-granted RBAC, hostPath/docker.sock
   pods, ServiceAccount impersonation) if the agent identity were
   ever compromised more broadly.
+
 - **NetworkPolicy (04-defenses/networkpolicy.yaml)** contains
   exfiltration if a payload variant tries to POST data somewhere
   external - egress is locked to DNS + the API server only.
+
 - **Falco (04-defenses/falco-rule.yaml)** is your visibility layer.
   It sees the attempted write via the k8s audit log even though
   RBAC/Kyverno already denied it - that's the live proof-of-defense
