@@ -22,8 +22,7 @@ This demo mirrors a real, published finding: in May 2025,
 Invariant Labs demonstrated a "toxic agent flow" against the
 official GitHub MCP server, where a malicious public GitHub Issue
 coerced an AI coding agent (Claude Desktop) into leaking private
-repository data via an auto-created public PR. Cite this early in
-the talk - it establishes this isn't a hypothetical, it's a known
+repository data via an auto-created public PR.It is not hypothetical but it's a known
 attack shape: an agent trusting instructions it finds inside data
 it reads. This demo re-creates that same underlying mechanism with
 a Kubernetes-native vector - a poisoned ConfigMap - matching the
@@ -48,7 +47,7 @@ Source: https://invariantlabs.ai/blog/mcp-github-vulnerability
 scripts/          run each act in order
 ```
 
-## Pre-event setup (do NOT do this live)
+## Inital Setup
 
 1. `scripts/01-setup-cluster.sh` - kind cluster + target workload,
    including the poisoned `triage-runbook` ConfigMap
@@ -84,7 +83,7 @@ scripts/          run each act in order
    `kubectl -n agent-system port-forward svc/kubernetes-mcp-server 8080:8080`
    running for the whole session.
 
-## Running the demo
+## Running The Demo
 
 ```bash
 # Act 1 - attack succeeds
@@ -106,6 +105,7 @@ scripts/05-run-act3-rerun.sh
 #    or a Kyverno policy violation if RBAC alone didn't catch it).
 #    Cut to the Falco dashboard/terminal to show the alert firing.
 ```
+![Demo Flow](image.png)
 
 ## Why each defense is there (the honest version)
 
