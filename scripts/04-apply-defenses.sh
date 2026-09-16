@@ -17,9 +17,9 @@ kubectl apply -f 04-defenses/networkpolicy.yaml
 
 echo ">>> Installing Kyverno (if not already installed)..."
 if ! kubectl get ns kyverno >/dev/null 2>&1; then
-  helm repo add kyverno-helm https://kyverno.github.io/kyverno/ >/dev/null
+  helm repo add kyverno https://kyverno.github.io/kyverno/ --force-update >/dev/null
   helm repo update >/dev/null
-  helm install kyverno kyverno-helm/kyverno -n kyverno --create-namespace \
+  helm install kyverno kyverno/kyverno -n kyverno --create-namespace \
     --wait --timeout 180s
 fi
 echo ">>> Applying agent-containment Kyverno policy..."
@@ -27,12 +27,11 @@ kubectl apply -f 04-defenses/kyverno-contain-agent.yaml
 
 cat <<'EOF'
 
->>> Falco setup is cluster/environment-specific (kind + the
->>> k8s-audit plugin needs the API server's audit webhook wired up
->>> and Falco deployed with the k8saudit plugin enabled). Do this
->>> as a pre-event setup step, not live — see README.md "Falco
->>> notes" for the outline, and load
->>> 04-defenses/falco-rule.yaml as a custom rules file.
+>>> Audit trail: scripts/tail-audit-log.sh (started separately, in
+>>> its own terminal) gives you the "we saw the attempt" proof for
+>>> Act 3 - no Falco needed. See README.md "Audit trail" section.
+>>> Falco itself is optional/advanced - see README.md "Falco
+>>> (optional, advanced)" if you specifically want it on stage.
 
 >>> Defenses applied. Re-run scripts/05-run-act3-rerun.sh next.
 EOF

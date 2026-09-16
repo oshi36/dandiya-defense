@@ -1,7 +1,20 @@
 # kind cluster config for "The Dandiya Defense to Poisoned Prompts"
 # Single control-plane node is enough for a live demo.
-# NOTE: Falco needs access to the host kernel/eBPF, so we mount
-# what it needs and keep this to a single node for simplicity.
+#
+# Audit logging is enabled directly to a file on the control-plane
+# node (NOT a webhook — no Falco/extra service required). This is
+# the recommended, low-risk way to show "we see the attempt in the
+# audit trail" without wiring up Falco's k8saudit plugin. See
+# scripts/tail-audit-log.sh and README.md "Audit trail" section.
+#
+# NOTE: extraMounts hostPath below is relative to the CURRENT
+# WORKING DIRECTORY of the `kind create cluster` invocation, not
+# to this file's location. scripts/01-setup-cluster.sh cd's to the
+# repo root before running kind, so the path is
+# "00-cluster/audit-policy.yaml" (root-relative), not
+# "./audit-policy.yaml" — if you ever run `kind create cluster`
+# manually from inside 00-cluster/, change this back to
+# "./audit-policy.yaml" or it will silently fail to find the file.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: dandiya-defense
@@ -10,3 +23,25 @@ nodes:
     extraMounts:
       - hostPath: /var/run/docker.sock
         containerPath: /var/run/docker.sock
+      - hostPath: 00-cluster/audit-policy.yaml
+        containerPath: /etc/kubernetes/audit-policy.yaml
+        readOnly: true
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            audit-policy-file: /etc/kubernetes/audit-policy.yaml
+            audit-log-path: /var/log/kubernetes/audit/audit.log
+            audit-log-format: json
+          extraVolumes:
+            - name: audit-policy
+              hostPath: /etc/kubernetes/audit-policy.yaml
+              mountPath: /etc/kubernetes/audit-policy.yaml
+              readOnly: true
+              pathType: File
+            - name: audit-logs
+              hostPath: /var/log/kubernetes/audit
+              mountPath: /var/log/kubernetes/audit
+              readOnly: false
+              pathType: DirectoryOrCreate

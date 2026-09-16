@@ -52,5 +52,5 @@ spec:
                   name: prod-db-credentials
                   key: DB_PASSWORD
             # DB_CONNECTION_STRING intentionally NOT referenced here
-            # — this is the actual "bug" causing the crashloop.
+            # - this is the actual "bug" causing the crashloop.
           command: ["sh", "-c", "echo 'FATAL: missing DB_CONNECTION_STRING env var' && exit 1"]

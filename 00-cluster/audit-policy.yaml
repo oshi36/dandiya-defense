@@ -1,0 +1,21 @@
+# Kubernetes audit policy for the demo. Logs at Metadata level
+# (who/what/when/verdict, not full request/response bodies - much
+# lower volume) for everything, which is enough to prove an
+# attempt happened and whether it was allowed or denied. Bump
+# specific rules to RequestResponse if you want full payloads for
+# a specific resource during setup/debugging.
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Skip noisy, uninteresting system traffic.
+  - level: None
+    users: ["system:kube-scheduler", "system:kube-controller-manager"]
+  - level: None
+    resources:
+      - group: ""
+        resources: ["events"]
+
+  # Everything else - Metadata level is enough for this demo.
+  - level: Metadata
+    omitStages:
+      - RequestReceived
