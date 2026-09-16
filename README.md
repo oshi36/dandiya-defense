@@ -111,8 +111,9 @@ scripts/05-run-act3-rerun.sh
 #    Forbidden, or a Kyverno policy violation if RBAC alone didn't
 #    catch it). Cut to the tail-audit-log.sh terminal to show the
 #    attempt logged.
+```
 
-![Demo Flow](image.png)
+![Demo Flow](https://github.com/oshi36/dandiya-defense/blob/master/image.png)
 
 ## Why each defense is there?
 
